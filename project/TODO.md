@@ -1,0 +1,2 @@
+- [x] Remove Project ID from metadata section in ProjectsPage.tsx and replace with Ownership
+- [x] Update description below map to full description including ownership, methodology, area, and credits issued per verification
