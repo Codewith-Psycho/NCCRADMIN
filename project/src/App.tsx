@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { HashRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import HomePage from './components/Pages/HomePage';
@@ -13,7 +13,8 @@ import ApprovedVerificationsPage from './components/Pages/ApprovedVerificationsP
 import XAIPage from './components/Pages/XAIPage';
 import MapPage from './components/Pages/MapPage';
 import SettingsPage from './components/Pages/SettingsPage';
-import SatellitesPage from './components/Pages/SatellitesPage';
+import DocumentsPage from './components/Pages/DocumentsPage';
+import GlobalPDFLinkInterceptor from './components/Common/GlobalPDFLinkInterceptor';
 import {
   mockStats,
   mockProjects,
@@ -22,7 +23,7 @@ import {
   mockValidations,
   mockVerifications
 } from './data/mockData';
-import { Verification, Project } from './types';
+import { Verification } from './types';
 
 function AppWrapper() {
   return (
@@ -34,83 +35,48 @@ function AppWrapper() {
 
 function App() {
   const location = useLocation();
-  const [activeSection, setActiveSection] = useState('projects');
-
-  // Add state to hold selected project for details page
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-
-  // Sync activeSection with current path
-  useEffect(() => {
-    const path = location.pathname;
-    if (path.startsWith('/projects')) {
-      setActiveSection('projects');
-    } else if (path.startsWith('/satellites')) {
-      setActiveSection('satellites');
-    } else if (path.startsWith('/map')) {
-      setActiveSection('map');
-    } else if (path.startsWith('/kyc')) {
-      setActiveSection('kyc');
-    } else if (path.startsWith('/acva')) {
-      setActiveSection('acva');
-    } else if (path.startsWith('/validation')) {
-      setActiveSection('validation');
-    } else if (path.startsWith('/verification')) {
-      setActiveSection('verification');
-    } else if (path.startsWith('/xai')) {
-      setActiveSection('xai');
-    } else if (path.startsWith('/settings')) {
-      setActiveSection('settings');
-    } else if (path === '/' || path === '/home') {
-      setActiveSection('home');
-    }
-  }, [location]);
-
+  const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [verifications, setVerifications] = useState<Verification[]>(mockVerifications);
   const [view, setView] = useState<'verification' | 'approved'>('verification');
-  const [selectedVerification, setSelectedVerification] = useState<Verification | null>(null);
-
-  // Handler to select project and navigate to details page
-  const handleSelectProject = (project: Project) => {
-    setSelectedProject(project);
-    setActiveSection('projectDetails');
-  };
-
-  // Handler to go back to projects list
-  const handleBackToProjects = () => {
-    setSelectedProject(null);
-    setActiveSection('projects');
-  };
 
   const handleUpdateVerification = (updatedVerifications: Verification[]) => {
     setVerifications(updatedVerifications);
   };
 
   const handleReview = (verification: Verification) => {
-    setSelectedVerification(verification);
+    console.log("Reviewing:", verification);
     setView('verification');
+  };
+
+  const isHomePage = location.pathname === '/' || location.pathname === '/home';
+
+  // Handler for sidebar navigation change
+  const handleSectionChange = (section: string) => {
+    navigate(section === 'home' ? '/' : `/${section}`);
   };
 
   return (
     <div className="min-h-screen bg-nee-50">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} collapsed={isSidebarCollapsed} />
+      <GlobalPDFLinkInterceptor />
+      <Sidebar collapsed={isSidebarCollapsed} activeSection={location.pathname.substring(1) || 'home'} onSectionChange={handleSectionChange} />
       {!isSidebarCollapsed && (
         <div onClick={() => setIsSidebarCollapsed(true)} className="fixed inset-0 bg-black/20 z-30 md:hidden" />
       )}
       <div className={`${isSidebarCollapsed ? 'ml-20' : 'ml-64'} transition-all duration-300`}>
-        {activeSection !== 'home' && (
+        {!isHomePage && (
           <Header
             onToggleSidebar={() => setIsSidebarCollapsed((s) => !s)}
             collapsed={isSidebarCollapsed}
-            onNavigate={(s) => setActiveSection(s)}
           />
         )}
-        <main className={activeSection === 'home' ? '' : 'pt-0'}>
+        <main className={isHomePage ? '' : 'pt-0'}>
           <div className="w-full px-6">
             <Routes>
-              <Route path="/" element={<HomePage stats={mockStats} onNavigateToProjects={() => setActiveSection('projects')} />} />
-              <Route path="/projects" element={<ProjectsPage projects={mockProjects} onSelectProject={handleSelectProject} />} />
-              <Route path="/projects/:projectId" element={<ProjectDetailsPage project={selectedProject!} onBack={handleBackToProjects} />} />
+              <Route path="/" element={<HomePage stats={mockStats} onNavigateToProjects={() => navigate('/projects')} />} />
+              <Route path="/home" element={<HomePage stats={mockStats} onNavigateToProjects={() => navigate('/projects')} />} />
+              <Route path="/projects" element={<ProjectsPage projects={mockProjects} onSelectProject={() => {}} />} />
+              <Route path="/projects/:projectId" element={<ProjectDetailsPage onBack={() => window.history.back()} />} />
               <Route path="/kyc" element={<KYCPage accounts={mockAccounts} />} />
               <Route path="/acva" element={<ACVAPage acvas={mockACVAs} />} />
               <Route path="/validation" element={<ValidationPage validations={mockValidations} />} />
@@ -123,11 +89,11 @@ function App() {
               } />
               <Route path="/xai" element={<XAIPage />} />
               <Route path="/map" element={<MapPage />} />
-              <Route path="/satellites" element={<SatellitesPage />} />
+              <Route path="/documents" element={<DocumentsPage />} />
+              {/* PDF demo route removed from main navigation */}
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/projectDetails" element={<ProjectDetailsPage project={selectedProject!} onBack={handleBackToProjects} />} />
             </Routes>
-            {activeSection === 'verification' && (
+            {location.pathname.startsWith('/verification') && (
               <div className="mt-4 flex space-x-4">
                 <button
                   onClick={() => setView('verification')}
